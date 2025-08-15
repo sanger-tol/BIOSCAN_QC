@@ -1,0 +1,154 @@
+---
+title: "fasta file processing for STOP codons"
+author: "Alicja Witwicka"
+date: '`r Sys.Date()`'
+output:
+  pdf_document: 
+    fig_caption: yes
+    toc: yes
+  html_document: 
+    toc: true
+  github_document:
+    toc: yes
+editor_options:  
+  chunk_output_type: console
+geometry: margin = 1cm
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, # hide code 
+  message = FALSE,
+  warning = FALSE,
+  cache.lazy = FALSE,
+  include = TRUE,
+  out.height = "\textheight",
+  out.width = "\textwidth",
+  comment = ""
+)
+```
+```{bash, eval=TRUE}
+# Write environment variables [batch_path/output_path/batch_no] to a temporary file 
+echo "batch_path=$batch_path" > /tmp/env_vars.txt
+echo "batch_no=$batch_no" >> /tmp/env_vars.txt
+```
+```{r read_temp_file}
+# Read environment variables from the file
+env_vars <- readLines("/tmp/env_vars.txt")
+env_list <- lapply(env_vars, function(x) strsplit(x, "=")[[1]][2])
+names(env_list) <- c("batch_path", "batch_no")
+
+# Assign to individual variables
+batch_path <- env_list$batch_path
+batch_no <- env_list$batch_no
+
+# For quick manual processing:
+# batch_no <- "batch37"
+# batch_path <- ("/lustre/scratch126/tol/teams/lawniczak/projects/bioscan/bioscan_qc/mbrave_batch_data/batch37/")
+# output_path <- ("/lustre/scratch126/tol/teams/lawniczak/projects/bioscan/bioscan_qc/qc_reports/batch37/")
+```
+```{r load_libraries}
+# Load required libraries; All libraries should be automatically installed in the environment
+load_pkgs <- function(pkg, bioconductor = FALSE) {
+  for (p in pkg) {
+      library(p, character.only = TRUE)
+  }
+}
+# CRAN packages
+cran_pkgs <- c(
+  "tidyverse", "RColorBrewer", "scales", "seqinr",
+  "dplyr", "cluster", "knitr", "patchwork", "colorspace", "purrr"
+)
+# Bioconductor packages
+bioconductor_pkgs <- c(
+  "Biostrings"
+)
+# Load CRAN packages
+load_pkgs(cran_pkgs, bioconductor = FALSE)
+# Load Bioconductor packages
+load_pkgs(bioconductor_pkgs, bioconductor = TRUE)
+```
+```{r ggplot_theme_setup}
+# Set a custom ggplot theme - generate 97 pastel colors (for box plots)
+pastel_colors <- colorRampPalette(brewer.pal(9, "Set1"))(97)
+pastel_colors_small <- colorRampPalette(brewer.pal(9, "Set1"))(17) %>% head(16)
+# barplot(rep(1, 17), col = pastel_colors_small, space = 0, border = NA)
+```
+```{r upload fasta}
+# Collect files
+network_tsv <- list.files(pattern = "*.tsv", path = batch_path)
+full_fasta <- list.files(pattern = "*.fas", path = batch_path)
+
+# Load files
+qc_tsv_raw <- read.table(paste(batch_path, network_tsv, sep = ""), sep="\t", header = TRUE)
+sequences_all <- Biostrings::readDNAStringSet(paste(batch_path, full_fasta, sep = ""))
+```
+```{r define functions}
+# Subset for test
+# sequences_all <- head(sequences_all, 1500)
+
+# Define the genetic code (table 5: invertebrate mitochondrial)
+genetic_code_5 <- getGeneticCode("5")
+
+# Translate and count STOP codons for all 3 ORFs
+get_stop_codons_by_frame <- function(seq, code = genetic_code_5) {
+  sapply(0:2, function(frame) {
+    trimmed <- subseq(seq, start = frame + 1, end = length(seq) - ((length(seq) - frame) %% 3))
+    aa <- Biostrings::translate(trimmed, genetic.code = code)
+    sum(letterFrequency(aa, "*"))
+  })
+}
+```
+```{r apply}
+# Apply 
+orf_stop_counts <- t(sapply(sequences_all, get_stop_codons_by_frame))
+colnames(orf_stop_counts) <- c("orf1", "orf2", "orf3")
+rownames(orf_stop_counts) <- names(sequences_all)
+
+# Convert to df
+stop_codon_df <- as.data.frame(orf_stop_counts)
+stop_codon_df$ID <- rownames(stop_codon_df)
+rownames(stop_codon_df) <- NULL
+stop_codon_df$no_stop_codon <- apply(stop_codon_df[, c("orf1", "orf2", "orf3")], 1, function(row) any(row == 0))
+
+# Frequency tables
+orf1_counts <- table(stop_codon_df$orf1)
+orf2_counts <- table(stop_codon_df$orf2)
+orf3_counts <- table(stop_codon_df$orf3)
+# Sort descending 
+orf1_counts <- sort(orf1_counts, decreasing = TRUE)
+orf2_counts <- sort(orf2_counts, decreasing = TRUE)
+orf3_counts <- sort(orf3_counts, decreasing = TRUE)
+# View results
+print(as.data.frame(orf1_counts))
+print(as.data.frame(orf2_counts))
+print(as.data.frame(orf3_counts))
+
+# Count how many ORFs have zero stop codons per sequence
+stop_free_counts <- apply(stop_codon_df[, c("orf1", "orf2", "orf3")], 1, function(row) sum(row == 0))
+# Frequency table: how many sequences had 0, 1, 2, or 3 stop-free ORFs
+stop_free_table <- table(stop_free_counts)
+# Sort descending (optional)
+stop_free_table <- sort(stop_free_table, decreasing = TRUE)
+# View result
+print(as.data.frame(stop_free_table))
+cat(paste("Number of sequences with STOP codons:", stop_free_table[2]))
+```
+```{r exclude sequences}
+# Keep only sequences with exactly one stop-free ORF
+# stop_codon_df_filtered <- stop_codon_df[stop_free_counts == 1, ]
+stop_codon_df_filtered <- stop_codon_df[stop_codon_df$no_stop_codon == TRUE, ]
+# Get the sequence names to keep
+keep_ids <- stop_codon_df_filtered$ID
+# Subset the original DNAStringSet
+filtered_sequences <- sequences_all[names(sequences_all) %in% keep_ids]
+# Examine the sequences 
+head(filtered_sequences, 10)
+```
+``` {r save}
+fasta_file_path <- paste(batch_path, "filtered_sequences_ORF1only_", batch_no, ".fasta", sep = "")
+Biostrings::writeXStringSet(filtered_sequences, filepath = fasta_file_path, width = 200001)
+
+csv_file_path <- paste(batch_path, "filtered_stop_codon_summary_", batch_no, ".csv", sep = "")
+write.csv(stop_codon_df_filtered, file = csv_file_path, row.names = FALSE)
+```
