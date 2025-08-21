@@ -45,9 +45,9 @@ output_path <- env_list$output_path
 batch_no <- env_list$batch_no
 
 # For quick manual processing:
-# batch_no <- "batch30"
-# batch_path <- ("/nfs/users/nfs_a/aw43/bioscan_qc/mbrave_data/batch30/")
-# output_path <- ("/nfs/users/nfs_a/aw43/bioscan_qc/mbrave_data/batch30/")
+# batch_no <- "batch36"
+# batch_path <- ("/lustre/scratch126/tol/teams/lawniczak/projects/bioscan/bioscan_qc/mbrave_batch_data/batch36/")
+# output_path <- ("/lustre/scratch126/tol/teams/lawniczak/projects/bioscan/bioscan_qc/mbrave_batch_data/batch36/")
 ```
 ```{r load_libraries}
 # Load required libraries; All libraries should be automatically installed in the environment
@@ -80,7 +80,7 @@ pastel_colors_small <- colorRampPalette(brewer.pal(9, "Set1"))(17) %>% head(16)
 ```{r load_files}
 # Collect files
 network_tsv <- list.files(pattern = "*.tsv", path = batch_path)
-full_fasta <- list.files(pattern = "*.fas", path = batch_path)
+full_fasta <- list.files(pattern = "*.fasta", path = batch_path)
 sample_file <- list.files(pattern = "*sample_stats.txt", path = batch_path)
 n_cont_file <- list.files(pattern = "*control_neg_stats.txt", path = batch_path)
 p_cont_file <- list.files(pattern = "*control_pos_stats.txt", path = batch_path)
@@ -582,18 +582,16 @@ heatmapPlate(unique_plates, stats_table_comb_failed, plot_list_counts)
 
 <b>Positive control as contamination source</b>
 ```{r otu_data_handling}
-# Remove failed samples - samples with no reads at all! 
-qc_tsv <- qc_tsv_raw %>% filter(!(pid %in% failed_samples))
 # Merge the consensus tables [primary and secondary hits]
 # Select only primary hits
-qc_primary <- qc_tsv %>% 
+qc_primary <- qc_tsv_raw %>% 
   dplyr::select(pid, run_primary, rep_count_primary, 
                 id_similarity_primary, p_primary, 
                 c_primary, o_primary, f_primary, 
                 g_primary, s_primary, otu_primary) %>% 
   group_by(pid) %>% slice_head(n = 1)
 # Select secondary hits
-qc_secondary <- qc_tsv %>% 
+qc_secondary <- qc_tsv_raw %>% 
   dplyr::select(pid, run_primary, rep_count_secondary, id_similarity_secondary,
                 p_secondary, c_secondary, o_secondary, f_secondary, 
                 g_secondary, s_secondary, otu_secondary)
@@ -642,9 +640,20 @@ sequences_df$id <- gsub("BOLD:", "", sequences_df$id)
 sequences_df$id <- paste(sequences_df$pid, sequences_df$id, sep = "_")
 sequences_df$id <- paste(sequences_df$id, sequences_df$Rep_Count, sep = "_")
 sequences_df$id <- paste(sequences_df$id, sequences_df$g_primary, sep = "_")
+
+qc_AM_og <- qc_AM
+sequences_df_og <- sequences_df
+
+qc_AM <- qc_AM %>% filter(id %in% sequences_df$id)
+sequences_df <- sequences_df %>% filter(id %in% qc_AM$id)
+
 qc_AM_seq <- merge(qc_AM, sequences_df, by = "id")
 qc_AM_seq <- qc_AM_seq %>% dplyr::select(id, pid.x, run_primary, rep_count_primary, id_similarity_primary, p_primary.x, c_primary.x, o_primary.x, f_primary.x, g_primary.x, s_primary.x, otu_primary.x, assignment, Contig_ID, Date, pid2, plate_row, plate_column, partner_plate, plate_number, sequence )
 colnames(qc_AM_seq) <- c("id", "pid", "run_primary", "rep_count_primary", "id_similarity_primary", "p_primary", "c_primary", "o_primary", "f_primary", "g_primary", "s_primary", "otu_primary", "assignment", "Contig_ID", "Date", "pid2", "plate_row", "plate_column", "partner_plate", "plate_number", "sequence")
+
+# Remove failed samples - samples with no reads at all! 
+qc_AM_seq <- qc_AM_seq %>% filter(!(pid %in% failed_samples))
+
 consensus_samples <- c(names(table(sequences_df$pid %in% qc_AM$pid)),
 names(table(qc_AM$pid %in% sequences_df$pid)),
 names(table(qc_AM$id %in% sequences_df$id)),
@@ -659,7 +668,7 @@ if (length(consensus_samples) == 4) {
 ```{r positive_control_read_contamination}
 # Determine p cont OTU
 p_cont_samples <- unique(p_cont_stats$Label)
-p_cont_OTU <- qc_AM %>% filter(pid %in% p_cont_samples) %>% filter(assignment == "primary") %>% pull(otu_primary) %>% unique()
+p_cont_OTU <- qc_AM_og %>% filter(pid %in% p_cont_samples) %>% filter(assignment == "primary") %>% pull(otu_primary) %>% unique()
 p_cont_contamination <- qc_AM %>% filter(!(pid %in% p_cont_samples)) %>% filter(otu_primary %in% p_cont_OTU) %>% dplyr::select(pid, rep_count_primary, id_similarity_primary, otu_primary, assignment, plate_row, plate_column, partner_plate, plate_number)
 p_cont_contamination_tab <- table(p_cont_contamination$assignment)
 qc_AM$plate_row <- as.factor(qc_AM$plate_row)
@@ -1008,7 +1017,7 @@ chimera_primary <- qc_tsv_no_cont %>%
 chimera_primary <- qc_tsv_no_cont %>% 
   filter(pid %in% chimera_primary$pid) 
 pid_counts <- chimera_primary %>%
-  count(pid)
+  dplyr::count(pid)
 # Filter to keep pids that appear only once - only have primary chimeric read 
 only_primary_chimera <- pid_counts %>%
   filter(n == 1) 
@@ -1181,7 +1190,6 @@ sample_metadata <- cbind(sample_metadata, data.frame(no_replaced_non_arthropods 
 # Remove anopheles
 anopheles_pids <- qc_tsv_arthropod_primary %>% filter(otu_primary == "BOLD:AAA3436") %>% pull(pid) %>% unique()
 anopheles_pids <- unique(c(anopheles_pids, (qc_tsv_arthropod_primary %>% filter(g_primary == "Anopheles") %>% pull(pid))))
-
 # anopheles_samples_all <- qc_tsv_arthropod_primary %>% filter(pid %in% anopheles_pids)
 anopheles_samples_all <- qc_tsv_arthropod_primary %>% filter(otu_primary == "BOLD:AAA3436" | g_primary == "Anopheles")
 # How many per plate / batch
@@ -1759,6 +1767,42 @@ write.csv(qc_tsv_arthropod_primary_save, file = csv_file_path, row.names = FALSE
 qc_tsv_arthropod_primaryBOLD_save <- qc_tsv_arthropod_primaryBOLD %>% dplyr::select(-id, -pid2, -sample)
 csv_file_path <- paste(output_path, "BOLDfiltered_metadata_", batch_no, ".csv", sep = "") 
 write.csv(qc_tsv_arthropod_primaryBOLD_save, file = csv_file_path, row.names = FALSE)
+
+# Prepare QC data output for BIOSCAN report card and save as csv
+qc_report_card_output <- qc_tsv_arthropod_primary_save %>% 
+  mutate(qc_description = case_when(
+    category == 1 ~ "A single sequence present (>200 reads)",
+    category == 2 ~ "A single sequence present (5-49 reads)",
+    category == 3 ~ "A single sequence present (50-200 reads)",
+    category == 4 ~ "Multiple sequences present, further QC Multiple sequences present with one dominant (>200 reads); other sequences are supported by <5 reads",
+    category == 5 ~ "Multiple sequences present, further QC Multiple sequences present with one dominant (50-200 reads); other sequences are supported by <5 reads",
+    category == 6 ~ "Multiple sequences present, further QC Multiple sequences present with one dominant (>200 reads); other sequences are supported by <5 reads",
+    category == 7 ~ "Multiple sequences present, further QC Multiple sequences present with one dominant (50-200 reads); other sequences are supported by <5 reads",
+    category == 8 ~ "Multiple sequences present but all differ by <2%; one sequence is dominant (>50 reads)",
+    category == 9 ~ "Multiple sequences present, further QC required",
+    category == 10 ~ "Multiple sequences present, further QC required",
+    category == 11 ~ "Multiple sequences present, further QC required",
+    category == 12 ~ "Multiple sequences present, further QC required",
+    category == 13 ~ "no_category"  
+  )) %>%
+  mutate(qc_decision = case_when(
+    category %in% c(1:8) ~ "PASS",
+    category %in% c(9:12) ~ "ON_HOLD",
+    category == 13 ~ "no_category"
+  )) %>%
+  dplyr::select(pid, category, qc_description, qc_decision)
+
+# Samples that did not pass
+didnt_pass <- sample_stats %>% filter(!(Label %in% qc_report_card_output$pid)) %>% pull(Label)
+qc_report_card_excluded <- data.frame(
+  pid = didnt_pass,
+  category = NA,
+  qc_description = NA,
+  qc_decision = "FAIL"
+)
+qc_report_card_output <- rbind(qc_report_card_output,qc_report_card_excluded)
+csv_file_path <- paste(output_path, "qc_report_card_output_", batch_no, ".csv", sep = "") 
+write.csv(qc_report_card_output, file = csv_file_path, row.names = FALSE)
 
 cat(paste("Final fasta file succesfully saved:", fasta_file_path,
           "\nFinal metadata file succesfully saved:", csv_file_path))
