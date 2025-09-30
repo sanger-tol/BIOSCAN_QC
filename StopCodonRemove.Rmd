@@ -85,9 +85,9 @@ sequences_all <- Biostrings::readDNAStringSet(paste(batch_path, full_fasta, sep 
 ```
 ```{r define functions}
 # Subset for test
-# sequences_all <- head(sequences_all, 1500)
+# sequences_all <- head(sequences_all, 1000)
 
-# Define the genetic code (table 5: invertebrate mitochondrial)
+# Define the genetic code [table 5: invertebrate mitochondrial]
 genetic_code_5 <- getGeneticCode("5")
 
 # Translate and count STOP codons for all 3 ORFs
@@ -119,7 +119,7 @@ orf3_counts <- table(stop_codon_df$orf3)
 orf1_counts <- sort(orf1_counts, decreasing = TRUE)
 orf2_counts <- sort(orf2_counts, decreasing = TRUE)
 orf3_counts <- sort(orf3_counts, decreasing = TRUE)
-# View results
+# Display in the html outputs 
 print(as.data.frame(orf1_counts))
 print(as.data.frame(orf2_counts))
 print(as.data.frame(orf3_counts))
@@ -128,9 +128,8 @@ print(as.data.frame(orf3_counts))
 stop_free_counts <- apply(stop_codon_df[, c("orf1", "orf2", "orf3")], 1, function(row) sum(row == 0))
 # Frequency table: how many sequences had 0, 1, 2, or 3 stop-free ORFs
 stop_free_table <- table(stop_free_counts)
-# Sort descending (optional)
 stop_free_table <- sort(stop_free_table, decreasing = TRUE)
-# View result
+# Display in the html output
 print(as.data.frame(stop_free_table))
 cat(paste("Number of sequences with STOP codons:", stop_free_table[2]))
 ```
@@ -142,12 +141,12 @@ stop_codon_df_filtered <- stop_codon_df[stop_codon_df$no_stop_codon == TRUE, ]
 keep_ids <- stop_codon_df_filtered$ID
 # Subset the original DNAStringSet
 filtered_sequences <- sequences_all[names(sequences_all) %in% keep_ids]
-# Examine the sequences 
+# Examine [for some reason this generated an empty fasta file so now displaying in the output]
 head(filtered_sequences, 10)
 ```
 ``` {r save}
 fasta_file_path <- paste(batch_path, "filtered_sequences_ORF1only_", batch_no, ".fasta", sep = "")
-Biostrings::writeXStringSet(filtered_sequences, filepath = fasta_file_path, width = 200001)
+Biostrings::writeXStringSet(filtered_sequences, filepath = fasta_file_path, width = 200001) # make sure the sequence doesn't cut in the middle
 
 csv_file_path <- paste(batch_path, "filtered_stop_codon_summary_", batch_no, ".csv", sep = "")
 write.csv(stop_codon_df_filtered, file = csv_file_path, row.names = FALSE)
