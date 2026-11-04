@@ -74,7 +74,7 @@ load_pkgs(bioconductor_pkgs, bioconductor = TRUE)
 ```{r ggplot_theme_setup}
 # Set a custom ggplot theme - generate 97 pastel colors (for box plots)
 pastel_colors <- colorRampPalette(brewer.pal(9, "Set1"))(97)
-pastel_colors_small <- colorRampPalette(brewer.pal(9, "Set1"))(17) %>% head(16)
+pastel_colors_small <- colorRampPalette(brewer.pal(9, "Set1"))(21) %>% head(20)
 # barplot(rep(1, 17), col = pastel_colors_small, space = 0, border = NA)
 ```
 ```{r load_files}
