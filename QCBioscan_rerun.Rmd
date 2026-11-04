@@ -1589,9 +1589,9 @@ qc_tsv_arthropod_primary <- qc_tsv_arthropod_primary %>%
     rep_count_primary >= 50 & rep_count_primary <= 200 & no_conflicting_sequences == 1 ~ 2,
     rep_count_primary >= 5 & rep_count_primary < 50 & no_conflicting_sequences == 1 ~ 3, # NO CONFLICTS AT ALL
     rep_count_primary > 200 & no_conflicting_sequences > 1 & best_secondary_read_count <= 5 ~ 4,
-    rep_count_primary >= 50 & no_conflicting_sequences > 1 & rep_count_primary <= 200 & best_secondary_read_count <= 5 ~ 5, # NO MORE THAN 4 NON-CONFLICTING SECONDARY READS OF A SEQUENCE 
+    rep_count_primary >= 50 & no_conflicting_sequences > 1 & rep_count_primary <= 200 & best_secondary_read_count <= 5 ~ 5, # NON-CONFLICTING SECONDARY SEQUENCES WITH 5 OR FEWER READS 
     rep_count_primary > 200 & no_conflicting_sequences > 1 & tax_conflict_read_count <= 5 ~ 6,
-    rep_count_primary >= 50 & no_conflicting_sequences > 1 & rep_count_primary <= 200 & tax_conflict_read_count <= 5 ~ 7, # NO MORE THAN 4 CONFLICTING SECONDARY READS OF A SINGLE SEQUENCE
+    rep_count_primary >= 50 & no_conflicting_sequences > 1 & rep_count_primary <= 200 & tax_conflict_read_count <= 5 ~ 7, # CONFLICTING SECONDARY SEQUENCES WITH 5 OR FEWER READS
     rep_count_primary > 200 & best_secondary_read_count > 5 ~ 9,
     rep_count_primary >= 50 & rep_count_primary <= 200 & best_secondary_read_count > 5 ~ 10,
     rep_count_primary >= 5 & rep_count_primary <= 49 & tax_conflict_read_count <= 5 ~ 11, # Low read count but no conflicting reads 
@@ -1602,15 +1602,15 @@ qc_tsv_arthropod_primary <- qc_tsv_arthropod_primary %>%
   mutate(category_explanation = case_when(
     category == 1 ~ "Only one sequence with more than 200 reads, no secondary sequence detected",
     category == 2 ~ "Only one sequence with 50 to 200 reads, no secondary sequence detected",
-    category == 3 ~ "Only one sequence with 5 or more but less than 50 reads, no secondary sequence detected",
-    category == 4 ~ "Dominant sequence with more than 200 reads, non-conflicting secondary sequences with 5 or less reads",
-    category == 5 ~ "Dominant sequence with 50 to 200 reads, non-conflicting secondary sequences with 5 or less reads",
-    category == 6 ~ "Dominant sequence with more than 200 reads, conflicting secondary sequences with 5 or less reads",
-    category == 7 ~ "Dominant sequence with 50 to 200 reads, conflicting secondary sequences with 5 or less read",
-    category == 9 ~ "Dominant sequence with more than 200 reads, secondary sequences with more than 5 read support",
-    category == 10 ~ "Dominant sequence with 50 to 200 reads, secondary sequences with more than 5 read support",
-    category == 11 ~ "Dominant sequence with 5 or more but less than 50 reads, non-conflicting secondary sequences with less than 5 reads",
-    category == 12 ~ "Dominant sequence with more than 5 but less than 50 reads, any other secondary reads present",
+    category == 3 ~ "Only one sequence with 5 to 49 reads, no secondary sequence detected",
+    category == 4 ~ "Dominant sequence with more than 200 reads, non-conflicting secondary sequences with 5 or fewer reads",
+    category == 5 ~ "Dominant sequence with 50 to 200 reads, non-conflicting secondary sequences with 5 or fewer reads",
+    category == 6 ~ "Dominant sequence with more than 200 reads, conflicting secondary sequences with 5 or fewer reads",
+    category == 7 ~ "Dominant sequence with 50 to 200 reads, conflicting secondary sequences with 5 or fewer reads",
+    category == 9 ~ "Dominant sequence with more than 200 reads, secondary sequences with more than 5 reads",
+    category == 10 ~ "Dominant sequence with 50 to 200 reads, secondary sequences with more than 5 reads",
+    category == 11 ~ "Dominant sequence with 5 to 49 reads, secondary sequences present, any conflicting ones with 5 or fewer reads",
+    category == 12 ~ "Dominant sequence with 5 to 49 reads, conflicting secondary sequences with more than 5 reads",
     category == 13 ~ "no_category"  # To check if anything goes wrong with filtering 
   )) %>%
   mutate(category_decision = case_when(
@@ -1875,10 +1875,10 @@ qc_portal <- qc_portal %>%
       as.numeric(as.character(category)) == 1  ~ "A single sequence present (>200 reads)",
       as.numeric(as.character(category)) == 2  ~ "A single sequence present (50 - 200 reads)",
       as.numeric(as.character(category)) == 3  ~ "A single sequence present (5 - 49 reads)",
-      as.numeric(as.character(category)) == 4  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by <5 reads",
-      as.numeric(as.character(category)) == 5  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by <5 reads",
-      as.numeric(as.character(category)) == 6  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by <5 reads",
-      as.numeric(as.character(category)) == 7  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by <5 reads",
+      as.numeric(as.character(category)) == 4  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by 5 or fewer reads",
+      as.numeric(as.character(category)) == 5  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by 5 or fewer reads",
+      as.numeric(as.character(category)) == 6  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by 5 or fewer reads",
+      as.numeric(as.character(category)) == 7  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by 5 or fewer reads",
       as.numeric(as.character(category)) == 8  ~ "Multiple sequences present but all differ by <2%; one sequence is dominant (>50 reads)",
       between(as.numeric(as.character(category)), 9, 13) ~ "Multiple sequences present, further QC required",
       TRUE ~ "None"

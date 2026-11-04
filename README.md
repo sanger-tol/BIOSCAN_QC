@@ -176,22 +176,31 @@ At this point, control samples are no longer included. No samples have been remo
 
 2.9. In the next step, all secondary sequences are removed, leaving only the primary arthropod sequences [or primary sequences with no taxonomy assigned] - the consensus sequences. The report then displays the number and percentage of retained samples. At this step, all retained samples get assigned a confidence category [Table 1].
 
-| Confidence category | No. consensus seq. reads | Sequence description                           | Pass/Fail     |
-|-------|----------------------|--------------------------------------------------------------|-----------------------------------------|
-| <b>1</b> | > 200   | Only consensus sequence with more than 200 reads, no secondary sequence detected                             |PASS |
-| <b>2</b> | 50 - 200| Only consensus sequence with 50 to 200 reads, no secondary sequence detected                                 |PASS |
-| <b>3</b> | 5 - 49  | Only consensus sequence with 5 or more but fewer than 50 reads, no secondary sequence detected                |PASS |
-| <b>4</b> | > 200   | Consensus sequence with more than 200 reads, non-conflicting secondary sequences with 5 or fewer reads   |PASS |
-| <b>5</b> | 50 - 200| Consensus sequence with 50 to 200 reads, non-conflicting secondary sequences with 5 or fewer reads       |PASS |
-| <b>6</b> | > 200   | Consensus sequence with more than 200 reads, conflicting secondary sequences with 5 or fewer reads       |PASS |
-| <b>7</b> | 50 - 200| Consensus sequence with 50 to 200 reads, conflicting secondary sequences with 5 or fewer read            |PASS |
-| <b>8</b> | > 49| Consensus sequence with 50 or more reads, non-conflicting secondary sequences with more than 5 reads [no more than 2% sequence divergence between all sequences in a sample]|PASS |
-| <b>9</b> | > 200   | Consensus sequence with more than 200 reads, secondary sequences with more than 5 read support          |FAIL  |
-| <b>10</b> | 50 - 200| Consensus sequence with 50 to 200 reads, secondary sequences with more than 5 read support              |FAIL  |
-| <b>11</b>| 5 - 49  | Consensus sequence with 5 or more but fewer than 50 reads, non-conflicting secondary sequences with fewer than 5 reads |FAIL  |
-| <b>12</b>| 5 - 49  | Consensus sequence with more than 5 but fewer than 50 reads, any other secondary reads present<br>[conflicting or not]|FAIL  | 
+| Category | Result | Reads (main sequence) | What it means | Report card description |
+| --- | --- | --- | --- | --- |
+| <b>1</b> | PASS | > 200 | Only one sequence, more than 200 reads; no secondary sequence | A single sequence present (>200 reads) |
+| <b>2</b> | PASS | 50 - 200 | Only one sequence, 50 to 200 reads; no secondary sequence | A single sequence present (50 - 200 reads) |
+| <b>3</b> | PASS | 5 - 49 | Only one sequence, 5 to 49 reads; no secondary sequence | A single sequence present (5 - 49 reads) |
+| <b>4</b> | PASS | > 200 | Dominant sequence, more than 200 reads; non-conflicting secondary sequences with 5 or fewer reads | Multiple sequences present with one dominant (>200 reads); other sequences are supported by 5 or fewer reads |
+| <b>5</b> | PASS | 50 - 200 | Dominant sequence, 50 to 200 reads; non-conflicting secondary sequences with 5 or fewer reads | Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by 5 or fewer reads |
+| <b>6</b> | PASS | > 200 | Dominant sequence, more than 200 reads; conflicting secondary sequences with 5 or fewer reads | Multiple sequences present with one dominant (>200 reads); other sequences are supported by 5 or fewer reads |
+| <b>7</b> | PASS | 50 - 200 | Dominant sequence, 50 to 200 reads; conflicting secondary sequences with 5 or fewer reads | Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by 5 or fewer reads |
+| <b>8</b> | PASS | 50 or more | Dominant sequence, 50 or more reads; non-conflicting secondary sequences with more than 5 reads, all within 2% of each other | Multiple sequences present but all differ by <2%; one sequence is dominant (>50 reads) |
+| <b>9</b> | ON_HOLD | > 200 | Dominant sequence, more than 200 reads; secondary sequences with more than 5 reads | Multiple sequences present, further QC required |
+| <b>10</b> | ON_HOLD | 50 - 200 | Dominant sequence, 50 to 200 reads; secondary sequences with more than 5 reads | Multiple sequences present, further QC required |
+| <b>11</b> | ON_HOLD | 5 - 49 | Dominant sequence, 5 to 49 reads; secondary sequences present, any conflicting ones with 5 or fewer reads | Multiple sequences present, further QC required |
+| <b>12</b> | ON_HOLD | 5 - 49 | Dominant sequence, 5 to 49 reads; conflicting secondary sequences with more than 5 reads | Multiple sequences present, further QC required |
+| <b>13</b> | FAILED | 0 | No sequence obtained | No sequence obtained |
+| <b>14</b> | FAILED | 1 - 4 | Arthropod sequence with fewer than 5 reads | Insufficient reads: arthropod sequence supported by fewer than 5 reads |
+| <b>15</b> | FAILED | any | Only non-arthropod sequences (e.g. Bovidae, human, Wolbachia, nematodes) | Non-arthropod sequence only |
+| <b>16</b> | EXCLUDED | any | Control mosquito well: the control mosquito (BOLD:AAA3436) is the main sequence and no other arthropod has 5 or more reads, or the mosquito has 200 or more reads and outnumbers any insect | Control mosquito detected |
 
-<b>Table 1.</b> Post-QC confidence scores. <br>
+<b>Table 1.</b> QC categories, results and report card descriptions (version 3.0, in development).
+
+- A sequence needs **5 or more reads** to count as a consensus sequence (categories 3, 11, 12). A secondary sequence with **5 or fewer reads** is treated as minor (categories 4 to 7); with **more than 5 reads** it needs checking (categories 8 to 12). Secondary sequences average 4.8 reads across batches, so 5 reads is within background contamination.
+- **Conflicting** = the secondary sequence belongs to a different family or order from the main sequence.
+- Categories 9 to 12 are **ON_HOLD** on the portal: the specimen has a usable sequence that needs checking before upload. (Earlier versions of this table called them "FAIL".)
+- Categories 13 to 16 are new in version 3.0. These specimens are removed before categories 1 to 12 are assigned. Until the QC script writes them itself, the category is worked out from the mBRAVE files by the flatfile build ([bioscan-qc-flatfile](https://github.com/sanger-tol/bioscan-qc-flatfile)). The script's internal check value "13 = no_category" will be renumbered when this is added.
 
 The report displays the above table with the number of samples assigned to each category. The categories are also included in the final sample metadata. The Decision column indicates whether the samples assigned these categories are going to be included in the BOLD upload. 
 
