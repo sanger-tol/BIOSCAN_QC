@@ -1875,11 +1875,11 @@ qc_portal <- qc_portal %>%
       as.numeric(as.character(category)) == 1  ~ "A single sequence present (>200 reads)",
       as.numeric(as.character(category)) == 2  ~ "A single sequence present (50 - 200 reads)",
       as.numeric(as.character(category)) == 3  ~ "A single sequence present (5 - 49 reads)",
-      as.numeric(as.character(category)) == 4  ~ "A single sequence present (>200 reads)",
-      as.numeric(as.character(category)) == 5  ~ "A single sequence present (50 - 200 reads)",
+      as.numeric(as.character(category)) == 4  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by <5 reads",
+      as.numeric(as.character(category)) == 5  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by <5 reads",
       as.numeric(as.character(category)) == 6  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by <5 reads",
       as.numeric(as.character(category)) == 7  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by <5 reads",
-      as.numeric(as.character(category)) == 8  ~ "Dominant sequence present (50 - 200 reads)",
+      as.numeric(as.character(category)) == 8  ~ "Multiple sequences present but all differ by <2%; one sequence is dominant (>50 reads)",
       between(as.numeric(as.character(category)), 9, 13) ~ "Multiple sequences present, further QC required",
       TRUE ~ "None"
     )
