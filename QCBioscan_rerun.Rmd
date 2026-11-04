@@ -1879,7 +1879,7 @@ qc_portal <- qc_portal %>%
       as.numeric(as.character(category)) == 5  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by 5 or fewer reads",
       as.numeric(as.character(category)) == 6  ~ "Multiple sequences present with one dominant (>200 reads); other sequences are supported by 5 or fewer reads",
       as.numeric(as.character(category)) == 7  ~ "Multiple sequences present with one dominant (50 - 200 reads); other sequences are supported by 5 or fewer reads",
-      as.numeric(as.character(category)) == 8  ~ "Multiple sequences present but all differ by <2%; one sequence is dominant (>50 reads)",
+      as.numeric(as.character(category)) == 8  ~ "Multiple sequences present but all differ by <2%; one sequence is dominant",
       between(as.numeric(as.character(category)), 9, 13) ~ "Multiple sequences present, further QC required",
       TRUE ~ "None"
     )
