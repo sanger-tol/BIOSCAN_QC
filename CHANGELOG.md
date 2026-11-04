@@ -10,6 +10,10 @@ Changes to `QCBioscan_rerun.Rmd`, the script used for the February 2026 rerun (`
 - **Category 8 restored.** The salvage step looked for `category_decision == "NO"`, but categories 9–12 have been labelled `"ON_HOLD"` since V1, so no specimen was ever salvaged to category 8. It now looks for `"ON_HOLD"`.
 - **Report card wording.** Categories 4 and 5 were written as "A single sequence present", although they have minor secondary sequences; they now use the same wording as categories 6 and 7. Category 8 uses the wording already on the portal ("Multiple sequences present but all differ by <2%; one sequence is dominant (>50 reads)").
 
+- **Category 3 includes 5 reads** (`>= 5`), as README Table 1 always said; a single sequence with exactly 5 reads was falling into category 11 (ON_HOLD). Category 9 uses `> 5` like category 10. Rule: a sequence needs 5 or more reads to count; a secondary with 5 or fewer reads is minor.
+- **Wording:** "5 or fewer reads" for minor secondaries (categories 4–7, explanations and report card); "5 to 49 reads" for low reads; categories 11 and 12 described as the code assigns them.
+- **README:** spelling fixed; section 1.6 refers to the positive control; Table 1 rewritten with ON_HOLD (9–12), FAILED (13–15) and EXCLUDED (16) and their report card descriptions.
+
 ### Planned
 
 - Stop-codon frame correction with BIP (Barcode Inference Pipeline, Centre for Biodiversity Genomics, https://github.com/cbg-innov/BIP, Apache License 2.0) on flagged sequences only, before QC. Replaces `StopCodonRemove_v1.Rmd`, which only flagged stop codons, took hours per batch and caused duplicate rows.
@@ -17,6 +21,6 @@ Changes to `QCBioscan_rerun.Rmd`, the script used for the February 2026 rerun (`
 - Write every specimen with a reason, including those removed before categories are assigned.
 - Repeat plates (`_rpt`, e.g. FRBX_025_rpt in batch 3) are dropped; find and fix the step.
 - Check the strongest secondary sequence, not the second row by `Contig_ID`.
-- Read-count thresholds (5 reads): decision pending (Rule A or Rule B).
+- Write categories 13–16 (FAILED / EXCLUDED) from the QC script itself; renumber the internal "13 = no_category" check.
 - Category 8: decide whether the salvage should require 50 or more reads, as Table 1 in the README says.
-- README Table 1: make the thresholds and category 12 wording match the code; correct the description of the mosquito step (2.6).
+- README: update Usage, Input and Output sections to the current script; correct the description of the mosquito step (2.6) and step 2.7.
