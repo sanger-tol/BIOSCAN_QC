@@ -1620,7 +1620,7 @@ qc_tsv_arthropod_primary <- qc_tsv_arthropod_primary %>%
   ))
 
 # Salvage samples
-metadata_rejected <- qc_tsv_arthropod_primary %>% filter(category_decision == "NO")
+metadata_rejected <- qc_tsv_arthropod_primary %>% filter(category_decision == "ON_HOLD")
 
 all_arthropod_sequences_rejected <- all_arthropod_sequences %>% filter(pid %in% metadata_rejected$pid)
 
