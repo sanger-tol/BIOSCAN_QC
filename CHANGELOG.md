@@ -16,6 +16,7 @@ Changes to `QCBioscan_rerun.Rmd`, the script used for the February 2026 rerun (`
 
 ### Planned
 
+- Stop codons in the main sequence (decided 5 Nov 2026): (1) use a stop-free secondary from the same species (within 2%, 5+ reads) if one exists; (2) otherwise apply BIP's frame correction (missing base = N, extra homopolymer base deleted, ends not trimmed); (3) if BIP cannot correct it, flag as possible NUMT. BIP runs only on flagged sequences with 5+ reads; length is a flag only; corrected PASS sequences are replaced on BOLD. Tested on batches 10, 18 and 43: no PASS/ON_HOLD changes, 131 sequences corrected, ampliseq confirmed all 31 corrections it could check.
 - Stop-codon frame correction with BIP (Barcode Inference Pipeline, Centre for Biodiversity Genomics, https://github.com/cbg-innov/BIP, Apache License 2.0) on flagged sequences only, before QC. Replaces `StopCodonRemove_v1.Rmd`, which only flagged stop codons, took hours per batch and caused duplicate rows.
 - Write the QC version and git commit into each batch's output (`qc_version.txt`).
 - Write every specimen with a reason, including those removed before categories are assigned.
