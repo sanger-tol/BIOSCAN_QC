@@ -13,6 +13,9 @@ Changes to `QCBioscan_rerun.Rmd`, the script used for the February 2026 rerun (`
 - **Category 3 includes 5 reads** (`>= 5`), as README Table 1 always said; a single sequence with exactly 5 reads was falling into category 11 (ON_HOLD). Category 9 uses `> 5` like category 10. Rule: a sequence needs 5 or more reads to count; a secondary with 5 or fewer reads is minor.
 - **Wording:** "5 or fewer reads" for minor secondaries (categories 4–7, explanations and report card); "5 to 49 reads" for low reads; categories 11 and 12 described as the code assigns them.
 - **README:** spelling fixed; section 1.6 refers to the positive control; Table 1 rewritten with ON_HOLD (9–12), FAILED (13–15) and EXCLUDED (16) and their report card descriptions.
+- **Random controls on their real plates.** Controls labelled with an SQPP code (`CONTROL_NEG_SQPP-83235-A_E1`) now get their partner plate from mBRAVE's `Sample Plate ID`. This removes the fake one-well "SQPP" plates and the gaps they left in the plate heatmaps, and the negative-control contamination search now compares these controls with the samples on their own plate. Whole plates of lab negative controls (DNAP CONTROLS) are still drawn, as before. Each run writes `plate_assignment_<batch>.csv`. QC outputs unchanged (all CSVs identical on batch43_0). Details and before/after figures: `docs/changes/plate_assignment_fix.md`.
+- **Report labelled with the batch.** The title is "BIOSCAN QC Report: <batch>". Run scripts should pass `output_file = paste0("QCBioscan_rerun_", batch_no, ".html")` so each file is named after its batch.
+- **Fixed plot colours.** Plate boxplot colours are no longer shuffled at random on each run.
 
 ### Planned
 

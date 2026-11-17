@@ -1,5 +1,5 @@
 ---
-title: "BIOSCAN QC Report"
+title: "`r paste('BIOSCAN QC Report:', Sys.getenv('batch_no'))`"
 author: "Alicja Witwicka"
 date: '`r Sys.Date()`'
 output:
@@ -516,7 +516,7 @@ low_read_plates <- sample_stats %>%
     median = median(Count),
     quantile75 = quantile(Count, probs = 0.75)) %>%
    filter(quantile75 < average_sample_count$avg_count) %>% arrange(Sample.Plate.ID) %>% pull(Sample.Plate.ID)
-subgroup <- sample(pastel_colors_small)
+subgroup <- pastel_colors_small
 stats_table_comb %>% filter(sample_type != "n_cont") %>%
   ggplot(aes(x = Sample.Plate.ID, y = Count)) +
   geom_point(alpha = 0.5, aes(colour = Group), size = 0.5) + 
@@ -683,10 +683,21 @@ stats_table_comb <- stats_table_comb %>%
   mutate(
     plate_row = as.integer(str_extract(Label2, "\\d+$")),
     plate_column = str_extract(Label2, "(?<=_)\\D(?=\\d+$)"),
-    partner_plate = str_extract(Label2, "^[^_]+_[^_]+"),
+    partner_plate_from_label = str_extract(Label2, "^[^_]+_[^_]+"),
+    # Random controls carry an SQPP code in their label (CONTROL_NEG_SQPP-100479-I_F9);
+    # mBRAVE's Sample.Plate.ID gives their real partner plate (e.g. NHMG_270).
+    partner_plate = ifelse(grepl("^SQPP", Label2) & grepl("^[A-Za-z]+_[0-9]+$", Sample.Plate.ID),
+                           Sample.Plate.ID, partner_plate_from_label),
     plate_number = str_extract(Label2, "(?<=_)[^_]+(?=_)"),
+    # Whole plates of lab controls (Group "DNAP CONTROLS") have no partner plate; flagged for reference
+    internal_control = grepl("DNAP", Group, ignore.case = TRUE),
     sample_type = ifelse(grepl("CONTROL", Label, ignore.case = TRUE), "control", "sample")
   )
+plate_lookup <- stats_table_comb %>% dplyr::select(Label, partner_plate, internal_control) %>%
+  dplyr::distinct(Label, .keep_all = TRUE)
+write.csv(stats_table_comb %>% dplyr::select(Label, Group, Sample.Plate.ID, partner_plate_from_label, partner_plate,
+                                             plate_column, plate_row, internal_control, sample_type),
+          file = paste(output_path, "plate_assignment_", batch_no, ".csv", sep = ""), row.names = FALSE)
 stats_table_comb_failed <- stats_table_comb %>% filter(partner_plate %in% low_read_plates)
 unique_plates <- stats_table_comb_failed %>% arrange(partner_plate) %>% pull(partner_plate) %>% unique()
 plot_list_counts <- list()
@@ -912,6 +923,10 @@ NOTE: the above samples are automatically removed if: <br>
 Distribution of reads in negative controls
 ```{r negative_control_contamination_histogram, fig.align='center', fig.width=3.7, fig.height=2}
 qc_AM$Sample.Plate.ID <- paste(qc_AM$partner_plate, qc_AM$plate_number, sep = "_")
+sqpp_rows <- grepl("SQPP", qc_AM$pid) & qc_AM$pid %in% plate_lookup$Label
+qc_AM$Sample.Plate.ID[sqpp_rows] <- plate_lookup$partner_plate[match(qc_AM$pid[sqpp_rows], plate_lookup$Label)]
+qc_AM$partner_group <- qc_AM$partner_plate
+qc_AM$partner_group[sqpp_rows] <- sub("_.*", "", qc_AM$Sample.Plate.ID[sqpp_rows])
 n_cont_samples_qc_AM <- qc_AM %>% filter(pid %in% n_cont_stats$Label) 
 # Calculate the maximum y value for both primary and secondary data
 combined_data <- n_cont_samples_qc_AM %>% filter(assignment %in% c("primary", "secondary"))
@@ -1012,7 +1027,7 @@ contamination_n_cont_df %>% filter(!(f_primary == "Bovidae")) %>% arrange(rep_co
   ggplot(aes(y = factor(plate_column, levels = rev(LETTERS[1:8])), x = factor(plate_row, levels = 1:12))) +
   geom_tile(aes(fill = rep_count_primary), color = "#C1CDCD") +
   geom_tile(data = (contamination_n_cont_df %>% filter(!(f_primary == "Bovidae")) %>% filter(sample == "n_cont")),
-            aes(fill = rep_count_primary, color = partner_plate), linewidth = 1) +
+            aes(fill = rep_count_primary, color = partner_group), linewidth = 1) +
   geom_tile(data = (contamination_n_cont_df %>% filter(!(f_primary == "Bovidae")) %>% filter(pid %in% n_cont_failed_2)),
             aes(fill = rep_count_primary), color = "#7FFF00", linewidth = 1.5) +
   geom_text(data = (text_data),
@@ -1077,7 +1092,7 @@ contamination_n_cont_df %>% filter(!(f_primary == "Bovidae")) %>%
   ggplot(aes(x = factor(column, levels = 1:24), y = factor(row, levels = rev(LETTERS[1:16])))) +
   geom_tile(aes(fill = rep_count_primary), color = "#C1CDCD") +
   geom_tile(data = (contamination_n_cont_df %>% filter(!(f_primary == "Bovidae")) %>% filter(sample == "n_cont")),
-            aes(fill = rep_count_primary, color = partner_plate), linewidth = 1) +
+            aes(fill = rep_count_primary, color = partner_group), linewidth = 1) +
   geom_tile(data = (contamination_n_cont_df %>% filter(!(f_primary == "Bovidae")) %>% filter(pid %in% n_cont_failed_2)),
             aes(fill = rep_count_primary), color = "#7FFF00", linewidth = 1.5) +
   # geom_tile(data = (contamination_n_cont_df_bovidae %>% filter(pid %in% n_cont_failed_2)),
@@ -1103,6 +1118,7 @@ Squares that are not outlined represent potential sources of contamination withi
 ### Assessment of primary and secondary sequences
 ```{r primary_and_secondary_contig_assessment}
 # Remove controls
+qc_AM$partner_group <- NULL  # plot-only column; keeps the output CSVs unchanged
 qc_tsv_no_cont <- qc_AM %>% filter(!(str_detect(pid, "CONTROL")))
 primary_pid <- qc_tsv_no_cont %>% filter(assignment == "primary")
 secondary_pid <- qc_tsv_no_cont %>% filter(assignment == "secondary")
@@ -1985,6 +2001,7 @@ heatmapPlate_cat <- function(plateIDs, statsDF, empty_list){
   for (i in seq_along(plateIDs)) {
     plate <- plateIDs[i]
     group_data <- statsDF %>% filter(Sample.Plate.ID == plate)
+    if (nrow(group_data) == 0) next
     plot <- ggplot(group_data, aes(y = factor(plate_column, levels = rev(LETTERS[1:8])), x = factor(plate_row, levels = 1:12))) +
       geom_tile(aes(fill = factor(category)), color = "#C1CDCD") +
       # geom_tile(data = (group_data %>% filter(sample_type == "control")),
