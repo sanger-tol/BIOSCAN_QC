@@ -16,6 +16,8 @@ Changes to `QCBioscan_rerun.Rmd`, the script used for the February 2026 rerun (`
 - **Random controls on their real plates.** Controls labelled with an SQPP code (`CONTROL_NEG_SQPP-83235-A_E1`) now get their partner plate from mBRAVE's `Sample Plate ID`. This removes the fake one-well "SQPP" plates and the gaps they left in the plate heatmaps, and the negative-control contamination search now compares these controls with the samples on their own plate. Whole plates of lab negative controls (DNAP CONTROLS) are still drawn, as before. Each run writes `plate_assignment_<batch>.csv`. QC outputs unchanged (all CSVs identical on batch43_0). Details and before/after figures: `docs/changes/plate_assignment_fix.md`.
 - **Report labelled with the batch.** The title is "BIOSCAN QC Report: <batch>". Run scripts should pass `output_file = paste0("QCBioscan_rerun_", batch_no, ".html")` so each file is named after its batch.
 - **Fixed plot colours.** Plate boxplot colours are no longer shuffled at random on each run.
+- **Category summary table fixed.** It joined the per-category and per-description tallies on the count, so categories with the same number of specimens were crossed and duplicated (batch43_0: categories 5/12 and 10/11; PASS rows summed to 1,901 instead of 1,895). It now counts category, description and decision together. Categories in the CSVs were never affected.
+- **Report wording.** Decisions shown as PASS and ON_HOLD (was YES/NO); the two "% OF SAMPLES EXCLUDED" lines replaced with counts and percentages for PASS, ON_HOLD and not categorised; "none" or 0 instead of blank, NA or NaN; "5 of fewer" corrected to "fewer than 5". HTML only. Details: `docs/changes/report_summary_fix.md`.
 
 ### Planned
 

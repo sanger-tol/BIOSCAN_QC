@@ -44,6 +44,10 @@ batch_path <- env_list$batch_path
 output_path <- env_list$output_path
 batch_no <- env_list$batch_no
 
+# Report helpers: "none" for an empty list, 0 for a missing count
+list_or_none <- function(x, sep = ", ") { x <- x[!is.na(x)]; if (length(x) == 0) "none" else paste(x, collapse = sep) }
+zero_if_na <- function(x) { x <- unname(x); if (length(x) == 0 || is.na(x)) 0 else x }
+
 # # For quick manual processing:
 # batch_no <- "batch54"
 # batch_path <- ("/lustre/scratch126/tol/teams/lawniczak/projects/bioscan/bioscan_qc/mbrave_batch_data/batch53/")
@@ -385,8 +389,8 @@ paste("\n\nNames of the associated partners:", paste(n_cont_failed_partners, col
       "\n\n[HARD CUT-OFF TO MONITOR]\nNumber of negative controls with 30 or more reads:", 
       "\nEmpty negative controls:", (empty_n_cont %>% filter(Count > 29) %>% nrow()),
       "\nLysate negative controls:", (lysate_n_cont %>% filter(Count > 29) %>% nrow()),
-      "\nPlates:", paste(c(empty_n_cont %>% filter(Count > 29) %>% pull(Sample.Plate.ID), 
-                           lysate_n_cont %>% filter(Count > 29) %>% pull(Sample.Plate.ID)), collapse = ", ")
+      "\nPlates:", list_or_none(c(empty_n_cont %>% filter(Count > 29) %>% pull(Sample.Plate.ID),
+                           lysate_n_cont %>% filter(Count > 29) %>% pull(Sample.Plate.ID)))
       )
 )
 ```
@@ -546,18 +550,18 @@ Green data points: positive controls <br>
 Blue data points: empty negative controls <br>
 Navy data points: lysate negative controls <br><br>
 ```{r boxplot_summary}
-cat(paste("Plates where the 75th percentile of the data is lower than expected mean read count (dark grey):\n\n", paste(low_read_plates, collapse = "\n"),"\n"),
+cat(paste("Plates where the 75th percentile of the data is lower than expected mean read count (dark grey):\n\n", list_or_none(low_read_plates, sep = "\n"),"\n"),
     paste("\nwhich constitutes", length(low_read_plates)*100/length(sample_stats %>% pull(Sample.Plate.ID) %>% unique()), "% of all partner plates in this batch"),
-    paste("\n\nPlates where all samples have 0 reads:", paste(sample_stats %>%
+    paste("\n\nPlates where all samples have 0 reads:", list_or_none(sample_stats %>%
   dplyr::group_by(Sample.Plate.ID) %>%
   dplyr::filter(all(Count == 0)) %>%
   dplyr::pull(Sample.Plate.ID) %>%
-  unique(), collapse = ", "),
-  "Plates where all samples have 5 of fewer reads:", paste(sample_stats %>%
+  unique()),
+  "\nPlates where all samples have fewer than 5 reads:", list_or_none(sample_stats %>%
   dplyr::group_by(Sample.Plate.ID) %>%
   dplyr::filter(all(Count < 5)) %>%
   dplyr::pull(Sample.Plate.ID) %>%
-  unique(), collapse = ", ")
+  unique())
   )
     )
 ```
@@ -595,7 +599,7 @@ sample_stats %>%
     axis.text = element_text(size = 6)
   )
 cat(
-  paste("Plates where the 75th percentile of the data is lower than expected mean read count (dark grey):", paste(low_read_UMI, collapse = ", ")),
+  paste("Plates where the 75th percentile of the data is lower than expected mean read count (dark grey):", list_or_none(low_read_UMI)),
   paste("\n\nHow many samples from the low-performance partner plates are present in the low-performance UMI plates (purple data points):", 
             (((sample_stats %>% filter(Sample.Plate.ID %in% low_read_plates)) %>% filter(UMI.Plate.ID %in% low_read_UMI)) %>% 
                pull(Label) %>% length())*100/(sample_stats %>% filter(Sample.Plate.ID %in% low_read_plates) %>% pull(Label) %>% length()), "%"))
@@ -840,8 +844,8 @@ umi_p_cont_contamination <- merge(qc_AM, umi_plates, by = "pid", all = FALSE) %>
 kable((umi_p_cont_contamination %>% dplyr::select(pid, rep_count_primary, id_similarity_primary, assignment, UMI.Plate.ID)), 
       col.names = c("Sample", "Control Sequence Count", "Sequence Similarity", "Sequence Type", "UMI Plate ID"),format = "html") %>%
   kableExtra::kable_styling(full_width = FALSE, position = "center")
-cat(paste("Number of samples with positive control OTU as primary sequence:", p_cont_contamination_tab["primary"]),
-    paste("\nNumber of samples with positive control OTU as secondary sequence:", p_cont_contamination_tab["secondary"]),
+cat(paste("Number of samples with positive control OTU as primary sequence:", zero_if_na(p_cont_contamination_tab["primary"])),
+    paste("\nNumber of samples with positive control OTU as secondary sequence:", zero_if_na(p_cont_contamination_tab["secondary"])),
     paste("\nout of", length(qc_AM %>% filter(assignment == "secondary") %>% pull(pid) %>% unique()), "samples with secondary sequences"),
     paste("\n\nLocation of the contaminants relative to the source:"))
 
@@ -886,9 +890,9 @@ Orange dotted lines: mean of reads found as secondary contaminants from the posi
 ```{r holder}
 cat(paste(
   "Read count mean of all secondary sequences in all samples:", mean(qc_secondary$rep_count_primary),
-  "\nRead count mean of all positive control sequences in other samples:", mean(p_cont_contamination$rep_count_primary),
+  "\nRead count mean of all positive control sequences in other samples:", if (nrow(p_cont_contamination) == 0) "none (no positive control sequences found in other samples)" else mean(p_cont_contamination$rep_count_primary),
   "\n\nRead count median of all secondary sequences in all samples:", median(qc_secondary$rep_count_primary),
-  "\nRead count median of all positive control sequences in other samples:", median(p_cont_contamination$rep_count_primary)
+  "\nRead count median of all positive control sequences in other samples:", if (nrow(p_cont_contamination) == 0) "none (no positive control sequences found in other samples)" else median(p_cont_contamination$rep_count_primary)
   ))
 ```
 ```{r primary_control_contig_replacement_or_removal}
@@ -1685,26 +1689,31 @@ qc_tsv_arthropod_primary <- qc_tsv_arthropod_primary %>%
   )
 
 # Summary!
-summary1 <- table(qc_tsv_arthropod_primary$category) %>% as.data.frame()
-summary2 <- table(qc_tsv_arthropod_primary$category_explanation) %>% as.data.frame()
-summary_merge <- merge(summary2,summary1, by = "Freq")
-summary_merge <- summary_merge %>%
-  mutate(Decision = case_when(
-    Var1.y %in% c(1:8) ~ "YES",
-    Var1.y %in% c(9:12) ~ "NO",
-    Var1.y == 13 ~ "no_category"
-  ))
+# One row per category: count category, description and decision together
+decision_label <- function(x) dplyr::recode(x, "YES" = "PASS", .default = x)  # CSVs keep "YES"
+summary_merge <- qc_tsv_arthropod_primary %>%
+  dplyr::ungroup() %>%  # the table is still grouped by pid from an earlier step
+  dplyr::count(category, category_explanation, category_decision) %>%
+  dplyr::mutate(category_decision = decision_label(category_decision)) %>%
+  dplyr::select(n, category_explanation, category, category_decision)
 colnames(summary_merge) <- c("Number of samples", "Description", "Category", "Decision")
 
 knitr::kable(summary_merge %>% arrange(Category), format = "html") %>% 
   kableExtra::kable_styling(full_width = FALSE, position = "center")
 
-knitr::kable(table(qc_tsv_arthropod_primary$category_decision) %>% as.data.frame(), 
-             col.names = c("Decision category", "Number of samples"), format = "html") %>%
+knitr::kable(qc_tsv_arthropod_primary %>% dplyr::ungroup() %>% dplyr::count(Decision = decision_label(category_decision)),
+             col.names = c("Decision", "Number of samples"), format = "html") %>%
   kableExtra::kable_styling(full_width = FALSE, position = "center")
 
-cat(paste(100-(nrow(qc_tsv_arthropod_primary)*100/total_sample_number), "% OF SAMPLES EXCLUDED [all samples]"))
-cat(paste(100-(nrow((qc_tsv_arthropod_primary %>% filter(category_decision == "YES")))*100/total_sample_number), "% OF SAMPLES EXCLUDED [only approved samples]"))
+n_retained <- nrow(qc_tsv_arthropod_primary)
+n_pass <- nrow(qc_tsv_arthropod_primary %>% filter(category_decision == "YES"))
+pct <- function(x) paste0(round(100 * x / total_sample_number, 1), "%")
+cat(paste0("Samples in this batch (excluding controls): ", total_sample_number,
+           "\nGiven a category: ", n_retained, " (", pct(n_retained), ")",
+           "\n    PASS: ", n_pass, " (", pct(n_pass), ")",
+           "\n    ON_HOLD: ", n_retained - n_pass, " (", pct(n_retained - n_pass), ")",
+           "\nNot given a category (FAILED or EXCLUDED earlier in the QC): ",
+           total_sample_number - n_retained, " (", pct(total_sample_number - n_retained), ")\n"))
 
 # Update batch metadata 
 summary_wide <- summary_merge %>%
